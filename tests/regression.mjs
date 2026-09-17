@@ -5,16 +5,16 @@ const data=JSON.parse(fs.readFileSync(new URL('../data/vocabulary.json',import.m
 async function runAudit(source,data){
   let handler;const nodes={app:{innerHTML:''},'stage-slot':{innerHTML:''}};
   const mem={},timers=new Map();let timerId=0;
-  const document={getElementById:id=>nodes[id],body:{classList:{toggle(){}}},addEventListener:(type,fn)=>{if(type==='click')handler=fn;}};
+  const document={getElementById:id=>nodes[id],body:{classList:{toggle(){}}},addEventListener:(type,fn,options)=>{if(type==='click'&&options!==true)handler=fn;}};
   const storage={getItem:k=>mem[k]||null,setItem:(k,v)=>{mem[k]=v;}};
-  const window={localStorage:storage};
+  const window={localStorage:storage,addEventListener(){}};
   const timeout=(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;};
   const clear=id=>timers.delete(id);
-  const instrumented=source.replace('  init();','  return init().then(()=>({get:()=>({screen,index,stage,currentSet,testQuestions,testIndex,reviewWords,stage3Banks,stage3Selected,stage3Locked}),select:(set,st,i)=>{currentSet=set;stage=st;resetStudyNav();index=i;screen="study";renderStudy();},progress,pendingWords,getStudy,getTest}));');
+  const instrumented=source.replace('  init();','  return init().then(()=>({get:()=>({screen,index,stage,currentSet,testQuestions,testIndex,reviewWords,stage3Banks,stage3Selected,stage3Locked}),select:(set,st,i)=>{currentSet=set;stage=st;resetStudyNav();index=i;screen="study";renderStudy();},progress,pendingWords,getStudy,getTest,unlock:()=>{inputUntil=0;}}));');
   const api=await new Function('document','window','navigator','location','fetch','setTimeout','clearTimeout','confirm','alert','return '+instrumented)(
     document,window,{}, {href:'https://ella-voca.vercel.app/'},async()=>({ok:true,json:async()=>data}),timeout,clear,()=>true,()=>{});
   const results=[];function check(ok,label){if(!ok)throw Error(label);results.push(label);}
-  const click=dataset=>handler({target:{closest:()=>({dataset})},preventDefault(){},stopPropagation(){}});
+  const click=dataset=>{api.unlock();return handler({target:{closest:()=>({dataset})},preventDefault(){},stopPropagation(){}});};
   const flush=()=>{const pending=[...timers.values()];timers.clear();pending.forEach(t=>t.fn());};
   const set=data.sets[0],word=set.words[0].word,other=set.words[1].word;
   click({action:'open-study'});click({mark:'memorized'});check(api.progress(set).s1===1,'암기 수 저장');
@@ -80,3 +80,4 @@ async function runAudit(source,data){
 }
 
 console.log('Regression checks:',await runAudit(source,data));
+

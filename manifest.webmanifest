@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "ELLA Vocabulary",
+  "short_name": "ELLA 단어",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffaf0",
+  "theme_color": "#f2b632",
+  "description": "엘라의 Yellow 단어 학습과 영영정의 시험",
+  "icons": [
+    {"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"/icons/maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ]
+}

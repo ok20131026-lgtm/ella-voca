@@ -111,3 +111,91 @@ body.dark .next-test-btn{background:var(--yellow);color:#302100}
   .flip-card{padding:8px}.prompt-card{padding:8px}
   .definition-question>div{font-size:16px}
 }
+
+
+/* Android / Samsung: compact content, stable and separated touch targets. */
+html{color-scheme:light; -webkit-tap-highlight-color:transparent}
+html:has(body.dark){color-scheme:dark}
+button,[data-action],summary{-webkit-tap-highlight-color:transparent}
+button:active:not(:disabled){filter:brightness(.92)}
+button{min-height:48px}
+.home-screen,.app-shell,.result-screen,.wrong-screen{min-height:100vh;min-height:100dvh}
+.home-top-actions{flex-wrap:wrap}
+.home-tools{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0 10px}
+.home-tools button{border:1px solid var(--line);background:var(--yellow-soft);border-radius:14px;padding:10px 14px;font-weight:700;min-height:52px}
+.home-tools .resume-btn{width:100%;background:var(--yellow);color:#302100}
+.home-card .home-note{font-size:13px;margin-bottom:18px;line-height:1.5}
+.platform-notice{position:fixed;z-index:100;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(90%,480px);padding:16px 20px;background:#332d21;color:#fffaf0;border:1px solid #eac66a;border-radius:16px;box-shadow:0 4px 20px #0004;line-height:1.5;pointer-events:none}
+.speak-btn,.speak-btn.small{width:48px;height:48px;min-width:48px;min-height:48px}
+.choice-row,.test-choice-row{grid-template-columns:minmax(0,1fr) 48px;gap:12px;padding:4px 8px}
+.action-grid{column-gap:12px;row-gap:16px}
+.action-grid button,.hint-btn,.next-test-btn,.result-actions button{min-height:56px}
+.choices,.test-choices{gap:14px}
+.letter-bank{gap:12px}
+.letter-bank button{width:48px;height:48px;min-width:48px;flex:0 0 48px;user-select:none}
+.result-actions,.test-menu-actions{gap:12px}
+.study-word,.word-flip.back-word{font-size:28px;line-height:1.2}
+.flip-card{min-height:130px;padding:14px}
+.card-front,.card-back{min-height:100px}
+.card-front>small{margin-top:8px}
+.drawer-head button{min-width:48px;min-height:48px}
+.drawer-backdrop.show~.drawer{overscroll-behavior:contain}
+@media(max-width:640px){
+  .topbar{height:auto;min-height:64px;grid-template-columns:48px minmax(0,1fr) 48px 48px;gap:8px;padding:8px 10px;backdrop-filter:none;background:var(--bg)}
+  .top-btn{min-width:48px;min-height:48px;padding:8px}
+  .top-title{font-size:13px}
+  .study-content,.test-quiz{height:calc(100vh - 64px);height:calc(100dvh - 64px);min-height:0;padding:8px 10px calc(12px + env(safe-area-inset-bottom,0px));overflow:auto;overscroll-behavior-y:contain}
+  .lesson-header,.stage-tabs,.stage-progress-row,.review-controls{flex-shrink:0}
+  .lesson-header{margin-bottom:8px}
+  .menu-btn,.stage-tabs button{min-height:48px}
+  .stage-tabs{gap:12px;margin-bottom:6px}
+  .stage-progress-row span{font-size:12px}
+  #stage-slot{min-height:210px;flex:1 0 210px}
+  .stage-panel{height:auto;min-height:100%;overflow:visible;padding:10px;border-radius:18px}
+  .flip-card{flex:0 0 auto;min-height:125px;overflow:visible;padding:12px}
+  .card-front,.card-back{min-height:98px;gap:6px}
+  .card-back{justify-content:flex-start}
+  .study-word,.word-flip.back-word{font-size:clamp(22px,7vw,28px)}
+  .study-word-row{gap:8px}
+  .stage1-meaning,.prompt-card .meaning{font-size:22px}
+  .definition-en,.definition-wrap.compact .definition-en{font-size:16px}
+  .definition-ko,.definition-wrap.compact .definition-ko{font-size:13px}
+  .prompt-card{flex:0 0 auto;min-height:0;overflow:visible;padding:12px;margin-bottom:12px}
+  .action-grid{gap:16px 12px;margin-top:14px}
+  .action-grid button{min-height:56px;font-size:14px;padding:10px 6px}
+  .nav-only{position:static;padding-top:0}
+  .choices,.test-choices{gap:14px}
+  .choice-row .choice{font-size:22px;min-height:52px}
+  .letter-bank{gap:12px}
+  .letter-bank button{width:48px;height:48px}
+  .assemble-answer{margin:12px 0;gap:5px}
+  .review-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;align-items:stretch}
+  .review-controls>button{min-height:52px;font-size:12px;padding:8px;line-height:1.4}
+  .definition-question{flex:0 0 auto;min-height:0;overflow:visible;padding:16px 12px}
+  .definition-question>div{font-size:18px}
+  .test-choice-row .test-choice{min-height:52px}
+  .choice-main strong{font-size:18px}
+  .hint-btn,.next-test-btn{min-height:56px;margin-top:14px}
+  .test-feedback{margin-top:12px}
+  .home-card{margin:12px auto;padding:22px 16px}
+  .home-card h1{font-size:40px}
+  .home-option{min-height:108px}
+  .home-tools{display:grid;grid-template-columns:1fr 1fr}
+  .home-tools .resume-btn{grid-column:1/-1}
+  .home-tools button{padding:8px;font-size:13px}
+}
+@media(max-height:700px) and (max-width:640px){
+  .study-content,.test-quiz{padding-top:6px}
+  .lesson-header{margin-bottom:5px}
+  .lesson-header span{display:none}
+  .stage-panel{padding:8px}
+  .counter,.session-summary{margin-bottom:4px}
+  .flip-card{min-height:105px;padding:8px}
+  .card-front,.card-back{min-height:82px}
+  .study-word,.word-flip.back-word{font-size:24px}
+  .prompt-card,.definition-question{padding:10px}
+  .stage-progress-row{margin-bottom:4px}
+  .home-badge{padding:4px 10px}
+  .home-card h1{margin-top:10px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

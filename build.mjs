@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');
-const required = ['index.html', 'styles.css', 'app.js', 'data/vocabulary.json'];
+const required = ['index.html', 'styles.css', 'app.js', 'data/vocabulary.json', 'sw.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'];
 for (const file of required) {
   if (!fs.existsSync(path.join(root, file))) throw new Error(`Missing required file: ${file}`);
 }
@@ -12,6 +12,9 @@ if (data.setCount !== 20 || data.totalWords !== 300) throw new Error(`Unexpected
 if (data.sets.some(s => s.wordCount !== 15)) throw new Error('Every lesson must contain 15 words.');
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(path.join(dist, 'data'), { recursive: true });
-for (const file of ['index.html','styles.css','app.js']) fs.copyFileSync(path.join(root,file), path.join(dist,file));
+for (const file of ['index.html','styles.css','app.js','sw.js','manifest.webmanifest']) fs.copyFileSync(path.join(root,file), path.join(dist,file));
 fs.copyFileSync(path.join(root,'data/vocabulary.json'), path.join(dist,'data/vocabulary.json'));
 console.log(`Build complete: ${data.setCount} lessons / ${data.totalWords} words -> dist/`);
+
+
+fs.cpSync(path.join(root,'icons'),path.join(dist,'icons'),{recursive:true});
