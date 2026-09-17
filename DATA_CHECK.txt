@@ -1,0 +1,22 @@
+ELLA Vocabulary data check
+==========================
+Source: 옐로우_단어_U1-U10_엑셀_정리_최종_매크로.xlsm
+Sets: 20
+Words per set: 15
+Total words: 300
+Range: Unit 1 Lesson 1 ~ Unit 10 Lesson 2
+
+JSON fields used by app:
+- word
+- meaningKo
+- definitionEn
+- definitionKo
+- keywordsSource
+- partOfSpeechKo
+- pronunciationSource
+- hangulPronunciation
+- speakText
+
+Keyword rendering rule:
+- Text inside [brackets] in definitionEn is shown in highlight color.
+- Brackets themselves are not shown.
