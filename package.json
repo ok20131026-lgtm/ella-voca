@@ -5,6 +5,6 @@
   "scripts": {
     "dev": "node dev-server.mjs",
     "build": "node build.mjs",
-    "test": "node tests/regression.mjs && node tests/android.mjs && node tests/offline.mjs"
+    "test": "node tests/regression.mjs && node tests/android.mjs && node tests/offline.mjs && node tests/clipboard.mjs"
   }
 }

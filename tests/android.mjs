@@ -40,4 +40,10 @@ assert.equal(api.validBackup({app:'ella-voca',version:1,study:{bad:{}},test:{}})
 assert.equal(api.validBackup({app:'ella-voca',version:1,study:{},test:{[data.sets[0].setId]:{best:99,wrong:[]}}}),false);
 const manifest=JSON.parse(fs.readFileSync(new URL('../manifest.webmanifest',import.meta.url),'utf8'));
 assert.equal(manifest.display,'standalone');assert.equal(manifest.icons.length,3);
-console.log('Android regression passed: rapid taps, study/test restoration, immutable scores, Back, background timer, backup validation, manifest.');
+const auto=await boot();auto.click({action:'open-study'});auto.click({stage:'2'});
+auto.click({choice2:data.sets[0].words[0].word});assert.equal(auto.api.state().index,0,'show correct feedback before advancing');
+auto.flush();assert.equal(auto.api.state().index,1,'stage 2 correct auto-advances');
+auto.click({choice2:data.sets[0].words[0].word});auto.flush();assert.equal(auto.api.state().index,1,'wrong answer stays');
+auto.click({next2:''});auto.click({choice2:data.sets[0].words[2].word});auto.click({action:'go-home'});auto.flush();assert.equal(auto.api.state().screen,'home','home cancels stage 2 timer');
+const manual=await boot();manual.click({action:'open-study'});manual.click({stage:'2'});manual.click({choice2:data.sets[0].words[0].word});manual.click({next2:''});manual.flush();assert.equal(manual.api.state().index,1,'manual next cancels pending auto-next');
+console.log('Android regression passed: rapid taps, study/test restoration, immutable scores, Back, background timer, backup validation, manifest, stage 2 auto-next and cancellation.');

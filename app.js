@@ -14,6 +14,7 @@
   let stage3Banks = {};
   let stage3Selected = [];
   let stage3Timer = null;
+  let stage2Timer = null;
   let reviewWords = null;
   let reviewResults = {};
   let stage3Feedback = '';
@@ -116,10 +117,10 @@
 
   function topbar(title, homeTarget='home') {
     return `<header class="topbar">
-      <button class="top-btn" data-action="go-${homeTarget}">⌂ <span>홈</span></button>
+      <button class="top-btn labeled" data-action="go-${homeTarget}"><span class="toolbar-icon" aria-hidden="true">📚</span><span class="toolbar-label">학습선택</span></button>
       <div class="top-title">${escapeHtml(title)}</div>
-      <button class="top-btn" data-action="toggle-dark">${dark?'☀':'☾'} <span>모드</span></button>
-      <button class="top-btn icon-only" data-action="copy-link">🔗</button>
+      <button class="top-btn labeled" data-action="toggle-dark"><span class="toolbar-icon" aria-hidden="true">${dark?'☀️':'🌙'}</span><span class="toolbar-label">${dark?'라이트모드':'다크모드'}</span></button>
+      <button class="top-btn icon-only" data-action="copy-link" aria-label="링크 복사" title="링크 복사">🔗</button>
     </header>`;
   }
 
@@ -184,7 +185,17 @@
     const r=getStudy(currentSet.setId)['stage'+stage];
     return currentSet.words.filter(w=>stage===1?r[w.word]==='review':r[w.word]?.answered&&!r[w.word].correct&&!r[w.word].reviewed);
   }
-  function cancelStageTimer(){ if(stage3Timer!==null)clearTimeout(stage3Timer);stage3Timer=null;stage3Locked=false; }
+  function cancelStageTimer(){ if(stage3Timer!==null)clearTimeout(stage3Timer);if(stage2Timer!==null)clearTimeout(stage2Timer);stage2Timer=null;stage3Timer=null;stage3Locked=false; }
+  function scheduleStage2Advance(){
+    if(index>=studyWords().length-1)return;
+    const setId=currentSet.setId,at=index,review=reviewWords;
+    if(stage2Timer!==null)clearTimeout(stage2Timer);
+    stage2Timer=setTimeout(()=>{
+      stage2Timer=null;
+      if(document.hidden||screen!=='study'||stage!==2||currentSet.setId!==setId||index!==at||reviewWords!==review||drawerOpen)return;
+      moveStudy(1);saveSession();
+    },800);
+  }
   function moveStudy(delta){
     cancelStageTimer(); index=Math.max(0,Math.min(studyWords().length-1,index+delta));
     flipped=false;stage3Selected=[];stage3Feedback='';inputUntil=Date.now()+320;renderStudy();
@@ -312,7 +323,14 @@
     if(action==='export-progress'){exportProgress();return;}
     if(action==='import-progress'){importProgress();return;}
     if(action==='toggle-dark'){dark=!dark;writeAll(DARK_KEY,{value:dark});render();return;}
-    if(action==='copy-link'){navigator.clipboard?.writeText(location.href)?.catch(()=>{});return;}
+    if(action==='copy-link'){copyAppLink();return;}
+    if(action==='close-copy'){document.getElementById('copy-dialog')?.remove();return;}
+    if(action==='copy-fallback'){
+      const field=document.getElementById('copy-url');
+      if(field&&legacyCopy(field)){document.getElementById('copy-dialog')?.remove();notifyUser('링크를 복사했습니다.');}
+      else notifyUser('주소를 길게 눌러 복사를 선택해 주세요.');
+      return;
+    }
     if(['go-home','open-test','go-testMenu'].includes(action)){cancelStageTimer();drawerOpen=false;screen=action==='go-home'?'home':'testMenu';render();return;}
     if(action==='open-study'){screen='study';currentSet=DATA.sets[0];stage=1;drawerOpen=false;resetStudyNav();render();return;}
     if(action==='open-drawer'){cancelStageTimer();drawerOpen=true;renderStudy();return;}
@@ -352,7 +370,8 @@
       const word=studyWords()[index],state=reviewWords?reviewResults[word.word]:getStudy(currentSet.setId).stage2[word.word];
       if(state?.answered)return;
       const correct=el.dataset.choice2===word.word;
-      recordStudy(correct,el.dataset.choice2);correct?correctFx():wrongFx();renderStudy();return;
+      recordStudy(correct,el.dataset.choice2);correct?correctFx():wrongFx();renderStudy();
+      if(correct)scheduleStage2Advance();return;
     }
     if('deleteLetter' in el.dataset){if(stage3Locked)return;stage3Selected.pop();stage3Feedback='';renderStage();return;}
     if(el.dataset.letter!==undefined){
@@ -391,6 +410,24 @@
   });
 
 
+  function legacyCopy(field){
+    try{field.focus({preventScroll:true});field.select();field.setSelectionRange(0,field.value.length);return document.execCommand('copy')===true;}catch{return false;}
+  }
+  function fallbackCopyLink(url){
+    document.getElementById('copy-dialog')?.remove();
+    const dialog=document.createElement('div');dialog.id='copy-dialog';dialog.className='copy-dialog';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label','링크 복사');
+    dialog.innerHTML=`<div class="copy-dialog-card"><h2>링크 복사</h2><p>복사 버튼을 누르거나 주소를 길게 눌러 복사해 주세요.</p><textarea id="copy-url" aria-label="앱 주소" readonly>${escapeHtml(url)}</textarea><div><button data-action="copy-fallback">📋 복사</button><button data-action="close-copy">닫기</button></div></div>`;
+    document.body.appendChild(dialog);
+    const field=document.getElementById('copy-url');
+    if(legacyCopy(field)){dialog.remove();notifyUser('링크를 복사했습니다.');}
+  }
+  async function copyAppLink(){
+    const url=new URL('./',location.href).href;
+    try{
+      if(!navigator.clipboard?.writeText){fallbackCopyLink(url);return;}
+      await navigator.clipboard.writeText(url);notifyUser('링크를 복사했습니다.');
+    }catch{fallbackCopyLink(url);}
+  }
   function notifyUser(message){
     let node=document.getElementById('platform-notice');
     if(!node){node=document.createElement('div');node.id='platform-notice';node.className='platform-notice';node.setAttribute('role','status');document.body.appendChild(node);}
