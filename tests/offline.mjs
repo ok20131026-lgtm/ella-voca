@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 const code=fs.readFileSync(new URL('../sw.js',import.meta.url),'utf8');
 const handlers={},removed=[];let installed=[],claimed=false,skipped=false;
 const cache={addAll:async requests=>{installed=requests;},match:async path=>path==='/app.js'?{cached:true}:undefined};
-const caches={open:async()=>cache,keys:async()=>['other-app','ella-voca-old','ella-voca-android-20260918-1'],delete:async k=>{removed.push(k);}};
+const version=code.match(/const VERSION='([^']+)'/)[1];
+const caches={open:async()=>cache,keys:async()=>['other-app','ella-voca-old',version],delete:async k=>{removed.push(k);}};
 const self={location:{origin:'https://ella.test'},clients:{claim:async()=>{claimed=true;}},skipWaiting:()=>{skipped=true;},addEventListener:(t,f)=>handlers[t]=f};
 class Request{constructor(url,options){this.url=url;this.cache=options.cache;}}
 vm.runInNewContext(code,{self,caches,URL,Request,fetch:async()=>({network:true})});

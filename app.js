@@ -213,7 +213,7 @@
         <div class="flip-card ${flipped?'flipped':''}" data-action="flip-card" role="group" aria-label="단어 카드">
           <div class="${flipped?'card-back':'card-front'}">
             <div class="study-word-row"><button class="word-flip ${flipped?'back-word':'study-word'}" data-action="flip-card" aria-expanded="${flipped}">${escapeHtml(word.word)}</button>${speaker(word)}</div>
-            ${flipped?`<div class="meaning stage1-meaning">${escapeHtml(word.meaningKo)}</div><div class="pos-pill">${escapeHtml(word.partOfSpeechKo)}</div>${definitionBlock(word)}`:'<small>카드를 눌러 뜻을 확인하세요</small>'}
+            ${flipped?`<div class="meaning-pos-row"><div class="meaning stage1-meaning">${escapeHtml(word.meaningKo)}</div><span class="pos-pill">${escapeHtml(word.partOfSpeechKo)}</span></div>${definitionBlock(word)}`:'<small>카드를 눌러 뜻을 확인하세요</small>'}
           </div>
         </div>
         <div class="action-grid two"><button data-move="-1" ${index===0?'disabled':''}>← 이전 카드</button><button data-move="1" ${last?'disabled':''}>다음 카드 →</button><button class="${rec.stage1[word.word]==='memorized'?'selected-good':''}" data-mark="memorized">✓ 외웠어요</button><button class="${rec.stage1[word.word]==='review'?'selected-warn':''}" data-mark="review">↻ 다시 볼래요</button></div>
@@ -532,4 +532,3 @@
   }
   init();
 })();
-

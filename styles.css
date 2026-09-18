@@ -138,20 +138,25 @@ button{min-height:48px}
 .flip-card{min-height:130px;padding:14px}
 .card-front,.card-back{min-height:100px}
 .card-front>small{margin-top:8px}
+.meaning-pos-row{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%}
+.meaning-pos-row .pos-pill{flex:0 0 auto;white-space:nowrap}
 .drawer-head button{min-width:48px;min-height:48px}
 .drawer-backdrop.show~.drawer{overscroll-behavior:contain}
 @media(max-width:640px){
   .topbar{height:auto;min-height:64px;grid-template-columns:48px minmax(0,1fr) 48px 48px;gap:8px;padding:8px 10px;backdrop-filter:none;background:var(--bg)}
   .top-btn{min-width:48px;min-height:48px;padding:8px}
   .top-title{font-size:13px}
-  .study-content,.test-quiz{height:calc(100vh - 64px);height:calc(100dvh - 64px);min-height:0;padding:8px 10px calc(12px + env(safe-area-inset-bottom,0px));overflow:auto;overscroll-behavior-y:contain}
+  .test-quiz{height:calc(100vh - 64px);height:calc(100dvh - 64px);min-height:0;padding:8px 10px calc(12px + env(safe-area-inset-bottom,0px));overflow:auto;overscroll-behavior-y:contain}
+  /* Let the document grow with the card. A fixed flex basis lets a long panel
+     paint beneath the following review controls, blocking its last button row. */
+  .study-content{display:block;height:auto;min-height:calc(100vh - 64px);min-height:calc(100dvh - 64px);overflow:visible;padding:8px 10px calc(20px + env(safe-area-inset-bottom,0px))}
   .lesson-header,.stage-tabs,.stage-progress-row,.review-controls{flex-shrink:0}
   .lesson-header{margin-bottom:8px}
   .menu-btn,.stage-tabs button{min-height:48px}
   .stage-tabs{gap:12px;margin-bottom:6px}
   .stage-progress-row span{font-size:12px}
-  #stage-slot{min-height:210px;flex:1 0 210px}
-  .stage-panel{height:auto;min-height:100%;overflow:visible;padding:10px;border-radius:18px}
+  #stage-slot{display:block;height:auto;min-height:0;flex:none}
+  .stage-panel{display:block;height:auto;min-height:0;overflow:visible;padding:10px;border-radius:18px}
   .flip-card{flex:0 0 auto;min-height:125px;overflow:visible;padding:12px}
   .card-front,.card-back{min-height:98px;gap:6px}
   .card-back{justify-content:flex-start}
