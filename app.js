@@ -35,6 +35,7 @@
   const TEST_KEY = 'ella-voca-test-v1';
   const DARK_KEY = 'ella-voca-dark';
   const SESSION_KEY = 'ella-voca-session-v1';
+  const POSITIONS_KEY = 'ella-voca-stage-positions-v1';
   const HAPTIC_KEY = 'ella-voca-haptic';
   let haptics = readAll(HAPTIC_KEY).value !== false;
   let inputUntil = 0;
@@ -174,7 +175,7 @@
       <div class="lesson-header"><button class="menu-btn" data-action="open-drawer">☰ 메뉴</button><div><b>${escapeHtml(currentSet.label)}</b><span>${escapeHtml(currentSet.title)}</span></div></div>
       <div class="stage-tabs">${[1,2,3].map(s=>`<button class="${stage===s?'active':''}" data-stage="${s}">${s}단계</button>`).join('')}</div>
       <div class="stage-progress-row"><span>1단계 ${p.s1}/${currentSet.wordCount}</span><span>2단계 ${p.s2}/${currentSet.wordCount}</span><span>3단계 ${p.s3}/${currentSet.wordCount}</span></div>
-      <div id="stage-slot"></div><div class="review-controls"><button data-action="${reviewWords?'exit-review':'start-review'}">${reviewWords?'전체 학습으로':stage===1?'다시 볼 카드 복습':'이 단계 오답 복습'}${reviewWords?'':' ('+pendingWords().length+')'}</button><button class="reset-link" data-action="reset-set">이 Lesson 학습 기록 초기화</button></div>
+      <div id="stage-slot"></div><div class="review-controls"><button data-action="${reviewWords?'exit-review':'start-review'}">${reviewWords?'전체 학습으로':stage===1?'다시 볼 카드 복습':'이 단계 오답 복습'}${reviewWords?'':' ('+pendingWords().length+')'}</button><button class="reset-link" data-action="reset-set">${stage}단계 학습 기록 초기화</button></div>
     </main></div>`;
     renderStage();
   }
@@ -310,6 +311,24 @@
     stage3Feedback='';reviewWords=null;reviewResults={};
   }
 
+  function saveStagePosition(){
+    if(screen!=='study'||!currentSet)return;
+    const positions=readAll(POSITIONS_KEY);
+    positions[currentSet.setId+'::'+stage]={index,flipped,stage2Choices,stage3Banks,
+      stage3Selected,stage3Feedback,reviewIds:reviewWords?.map(w=>w.word)||null,reviewResults};
+    writeAll(POSITIONS_KEY,positions);
+  }
+  function restoreStagePosition(){
+    const x=readAll(POSITIONS_KEY)[currentSet.setId+'::'+stage];
+    if(!x)return;
+    reviewWords=Array.isArray(x.reviewIds)?x.reviewIds.map(id=>currentSet.words.find(w=>w.word===id)).filter(Boolean):null;
+    if(reviewWords&&!reviewWords.length)reviewWords=null;
+    index=Math.max(0,Math.min(studyWords().length-1,Number(x.index)||0));
+    flipped=!!x.flipped;stage2Choices=x.stage2Choices||{};stage3Banks=x.stage3Banks||{};
+    stage3Selected=Array.isArray(x.stage3Selected)?x.stage3Selected:[];
+    stage3Feedback=x.stage3Feedback||'';reviewResults=x.reviewResults||{};
+  }
+
   document.addEventListener('click',e=>{
     try {
     const el=e.target.closest('button, [data-action]'); if(!el||el.disabled)return;
@@ -337,7 +356,10 @@
     if(action==='close-drawer'){drawerOpen=false;renderStudy();return;}
     if(action==='flip-card'){flipped=!flipped;renderStage();return;}
     if(action==='reset-set'){
-      if(confirm('이 Lesson의 단어학습 기록만 초기화할까요? 시험 기록은 유지됩니다.')){clearSet(currentSet.setId);resetStudyNav();renderStudy();}
+      if(confirm('이 Lesson의 '+stage+'단계 학습 기록만 초기화할까요? 다른 단계와 시험 기록은 유지됩니다.')){
+        stopMedia();const rec=getStudy(currentSet.setId);rec['stage'+stage]={};saveStudy(currentSet.setId,rec);
+        resetStudyNav();renderStudy();
+      }
       return;
     }
     if(action==='start-review'){
@@ -355,7 +377,10 @@
     if(action==='wrong-list'){screen='testWrong';render();return;}
     if(action==='retry-wrong'){startTest(testSet,testSet.words.filter(w=>getTest(testSet.setId).wrong.includes(w.word)));return;}
     if(el.dataset.set){stopMedia();currentSet=DATA.sets.find(s=>s.setId===el.dataset.set)||currentSet;drawerOpen=false;resetStudyNav();renderStudy();return;}
-    if(el.dataset.stage){stopMedia();stage=Number(el.dataset.stage);resetStudyNav();renderStudy();return;}
+    if(el.dataset.stage){
+      const next=Number(el.dataset.stage);if(![1,2,3].includes(next)||next===stage)return;
+      saveStagePosition();stopMedia();stage=next;resetStudyNav();restoreStagePosition();renderStudy();return;
+    }
     if(el.dataset.move){moveStudy(Number(el.dataset.move));return;}
     if(el.dataset.mark){
       const word=studyWords()[index],r=getStudy(currentSet.setId);r.stage1[word.word]=el.dataset.mark;saveStudy(currentSet.setId,r);renderStudy();return;
@@ -440,6 +465,7 @@
   }
   function saveSession(){
     if(!DATA||!['study','testQuiz'].includes(screen))return;
+    saveStagePosition();
     writeAll(SESSION_KEY,{version:1,screen,setId:currentSet?.setId,stage,index,flipped,
       stage2Choices,stage3Banks,stage3Selected,stage3Feedback,
       reviewIds:reviewWords?.map(w=>w.word)||null,reviewResults,
@@ -513,7 +539,7 @@
         const file=input.files[0];if(!file)return;if(file.size>2000000)throw Error();
         const b=JSON.parse(await file.text());if(!validBackup(b))throw Error();
         if(!confirm('현재 학습·시험 기록을 백업 파일의 기록으로 바꿀까요?'))return;
-        writeAll(STUDY_KEY,b.study);writeAll(TEST_KEY,b.test);writeAll(SESSION_KEY,{});resumeAvailable=false;
+        writeAll(STUDY_KEY,b.study);writeAll(TEST_KEY,b.test);writeAll(SESSION_KEY,{});writeAll(POSITIONS_KEY,{});resumeAvailable=false;
         render();notifyUser('학습 기록을 복원했습니다.');
       }catch{notifyUser('올바른 ELLA 기록 백업 파일을 선택해 주세요.');}
     };input.click();

@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const data=JSON.parse(fs.readFileSync(new URL('../data/vocabulary.json',import.meta.url),'utf8'));
 function boot(mem={}){
-  const events={},windowEvents={},nodes={app:{innerHTML:''},'stage-slot':{innerHTML:''}},timers=new Map();let id=0,time=1000;
+  const events={},windowEvents={},nodes={app:{innerHTML:''},'stage-slot':{innerHTML:''}},timers=new Map();let id=0,time=1000,confirmed=true;
   const document={hidden:false,getElementById:k=>nodes[k],body:{classList:{toggle(){}}},addEventListener:(t,f,c)=>{(events[t]??=[]).push({f,c});}};
   const window={localStorage:{getItem:k=>mem[k]||null,setItem:(k,v)=>mem[k]=v},addEventListener:(t,f)=>windowEvents[t]=f};
   const nav=[],history={pushState:s=>nav.push(s),replaceState:s=>{nav[nav.length?nav.length-1:0]=s;}};
   const navigator={vibrate(){}};
-  const instrumented=source.replace('  init();',`  return init().then(()=>({state:()=>({screen,stage,index,drawerOpen,stage3Selected,stage3Locked,testIndex,testSelected,testQuestions,testAnswers}),saveSession,restoreSession,validBackup,getStudy,getTest,pendingWords,render,stopMedia}));`);
-  const apiPromise=new Function('document','window','navigator','location','fetch','setTimeout','clearTimeout','confirm','alert','history','Date','return '+instrumented)(document,window,navigator,{href:'https://example.test'},async()=>({ok:true,json:async()=>data}),f=>{timers.set(++id,f);return id;},id=>timers.delete(id),()=>true,()=>{},history,{now:()=>time});
-  return apiPromise.then(api=>({api,mem,nav,document,events,windowEvents,nodes,timers,
+  const instrumented=source.replace('  init();',`  return init().then(()=>({state:()=>({screen,stage,index,flipped,stage3Feedback,drawerOpen,stage3Selected,stage3Locked,testIndex,testSelected,testQuestions,testAnswers}),saveSession,restoreSession,validBackup,getStudy,getTest,pendingWords,render,stopMedia}));`);
+  const apiPromise=new Function('document','window','navigator','location','fetch','setTimeout','clearTimeout','confirm','alert','history','Date','return '+instrumented)(document,window,navigator,{href:'https://example.test'},async()=>({ok:true,json:async()=>data}),f=>{timers.set(++id,f);return id;},id=>timers.delete(id),()=>confirmed,()=>{},history,{now:()=>time});
+  return apiPromise.then(api=>({api,mem,nav,document,events,windowEvents,nodes,timers,confirm(value){confirmed=value;},
     click(dataset,advance=true){if(advance)time+=500;const e={target:{closest:()=>({dataset})},preventDefault(){},stopPropagation(){}};events.click.filter(x=>x.c!==true).forEach(x=>x.f(e));},
     flush(){const ts=[...timers.values()];timers.clear();ts.forEach(f=>f());}
   }));
@@ -47,3 +47,24 @@ auto.click({choice2:data.sets[0].words[0].word});auto.flush();assert.equal(auto.
 auto.click({next2:''});auto.click({choice2:data.sets[0].words[2].word});auto.click({action:'go-home'});auto.flush();assert.equal(auto.api.state().screen,'home','home cancels stage 2 timer');
 const manual=await boot();manual.click({action:'open-study'});manual.click({stage:'2'});manual.click({choice2:data.sets[0].words[0].word});manual.click({next2:''});manual.flush();assert.equal(manual.api.state().index,1,'manual next cancels pending auto-next');
 console.log('Android regression passed: rapid taps, study/test restoration, immutable scores, Back, background timer, backup validation, manifest, stage 2 auto-next and cancellation.');
+
+const tabs=await boot();tabs.click({action:'open-study'});
+tabs.click({move:'1'});tabs.click({move:'1'});tabs.click({action:'flip-card'});
+tabs.click({stage:'2'});tabs.click({next2:''});tabs.click({choice2:data.sets[0].words[1].word});
+tabs.click({stage:'3'});for(let i=0;i<4;i++)tabs.click({next3:''});
+const spellingWord=data.sets[0].words[4].word;
+const letter=JSON.parse(tabs.mem['ella-voca-session-v1']).stage3Banks[spellingWord][0];
+tabs.click({letter:String(letter.id)});
+tabs.click({stage:'1'});assert.equal(tabs.api.state().index,2);assert(tabs.api.state().flipped);
+tabs.click({stage:'2'});assert.equal(tabs.api.state().index,1);assert(tabs.nodes['stage-slot'].innerHTML.includes('정답'));
+tabs.flush();assert.equal(tabs.api.state().index,1,'switching cancels pending automatic navigation');
+tabs.click({stage:'3'});assert.equal(tabs.api.state().index,4);assert.deepEqual(tabs.api.state().stage3Selected,[letter.id]);
+tabs.click({stage:'3'});assert.equal(tabs.api.state().index,4,'same tab keeps position');
+const reload=await boot(tabs.mem);reload.click({action:'resume-session'});reload.click({stage:'1'});
+assert.equal(reload.api.state().index,2);assert(reload.api.state().flipped);
+tabs.confirm(false);tabs.click({action:'reset-set'});tabs.click({stage:'1'});tabs.click({stage:'3'});assert.equal(tabs.api.state().index,4);
+tabs.confirm(true);tabs.click({action:'reset-set'});assert.equal(tabs.api.state().index,0);assert.deepEqual(tabs.api.state().stage3Selected,[]);
+tabs.click({stage:'1'});assert.equal(tabs.api.state().index,2);tabs.click({stage:'2'});assert.equal(tabs.api.state().index,1);
+assert(tabs.api.getStudy(data.sets[0].setId).stage2[data.sets[0].words[1].word].correct,'reset leaves other stage scores intact');
+tabs.click({set:data.sets[1].setId});tabs.click({stage:'3'});assert.equal(tabs.api.state().index,0,'lesson isolation');
+console.log('Stage resume passed: all positions, flipped card, chosen answer, partial spelling, reload, cancelled/confirmed reset and lesson isolation.');

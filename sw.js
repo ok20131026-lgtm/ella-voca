@@ -1,5 +1,5 @@
 /* Bump VERSION whenever a cached application file changes. */
-const VERSION='ella-voca-android-20260918-3';
+const VERSION='ella-voca-20260923-stage-resume';
 const ASSETS=['/','/index.html','/styles.css','/app.js','/data/vocabulary.json','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/maskable-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(ASSETS.map(url=>new Request(url,{cache:'reload'})))));
