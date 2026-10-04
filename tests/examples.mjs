@@ -58,3 +58,38 @@ assert.equal(data.sets[4].words[11].exampleBlank.split('______').length-1,2,'sep
 assert.equal(data.sets[18].words[5].exampleBlank.split('______').length-1,2,'axis appears twice');
 assert.equal(restored.api.validBackup({app:'ella-voca',version:1,study:{},test:{[data.sets[0].setId]:{best:99,wrong:[]}},example:{[data.sets[0].setId]:{best:2,wrong:[]}}}),false);
 console.log('Example quiz passed: all 300 questions, Excel Korean hints, 20 lessons, balanced positions, separate scores, hidden translations, persisted choices and answers, manual next, source forms and legacy vocabulary.');
+
+const escape=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+for(const mode of ['definition','example']){
+ const t=await boot();const open=mode==='example'?'open-example':'open-test';
+ t.click({action:open});t.click({testSet:data.sets[0].setId});
+ let q=t.api.state().testQuestions[0];
+ t.click({action:'toggle-hint'});
+ assert(t.nodes.app.innerHTML.includes(escape(mode==='example'?q.word.exampleKo:q.word.definitionKo)),'source translation hint');
+ assert(!t.nodes.app.innerHTML.includes('[힌트] 알파벳'),'old hint removed');
+ t.click({testChoice:q.word.word});
+ for(const choice of q.choices) assert(t.nodes.app.innerHTML.includes(escape(choice.meaningKo)),'all choices reveal Korean meaning');
+ t.click({action:'next-test'});t.click({action:'go-testMenu'});
+ assert(t.nodes.app.innerHTML.includes('이어 풀기 (2/15)'));
+ const current=t.api.state().testQuestions;
+ t.click({testSet:data.sets[1].setId});t.click({action:'next-test'});
+ assert.equal(t.api.state().testIndex,1);
+ assert.equal(t.api.state().testAnswers[0].skipped,true);
+ t.click({action:'go-testMenu'});t.click({testSet:data.sets[0].setId});
+ assert.equal(t.api.state().testIndex,1);assert.deepEqual(t.api.state().testQuestions,current);
+ t.click({action:'go-testMenu'});
+ const reload=await boot(t.mem);reload.click({action:open});reload.click({testSet:data.sets[0].setId});
+ assert.equal(reload.api.state().testIndex,1,'Lesson resume after reload');
+ reload.click({action:'go-testMenu'});reload.confirm(false);reload.click({resetTest:data.sets[0].setId});
+ reload.click({testSet:data.sets[0].setId});assert.equal(reload.api.state().testIndex,1,'cancelled reset preserves position');
+ reload.click({action:'go-testMenu'});reload.confirm(true);reload.click({resetTest:data.sets[0].setId});
+ reload.click({testSet:data.sets[0].setId});assert.equal(reload.api.state().testIndex,0,'confirmed reset starts at first question');
+ reload.click({action:'go-testMenu'});reload.click({testSet:data.sets[1].setId});assert.equal(reload.api.state().testIndex,1,'other lesson remains');
+ reload.click({action:'go-testMenu'});reload.click({testSet:data.sets[0].setId});
+ for(let i=0;i<15;i++)reload.click({action:'next-test'});
+ assert.equal(reload.api.state().screen,'testResult');assert.equal(reload.api.state().testAnswers.length,15);
+ assert(reload.api.state().testAnswers.every(a=>a.correct===false&&a.skipped));
+ assert.equal(reload.api.getTest(data.sets[0].setId).wrong.length,15);
+ assert(reload.nodes.app.innerHTML.includes('점수 0점'),'15 unanswered questions score zero');
+}
+console.log('Both test modes passed: per-Lesson resume/reload, source hint, all four meanings, confirmed/cancelled isolated reset, skips including final question count as wrong.');

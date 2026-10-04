@@ -78,6 +78,15 @@
   const TEST_KEY = 'ella-voca-test-v1';
   const EXAMPLE_KEY = 'ella-voca-example-test-v1';
   const EXAMPLE_SESSION_KEY = 'ella-voca-example-session-v1';
+  const TEST_DRAFTS_KEY = 'ella-voca-test-drafts-v1';
+  function draftId(setId){return testMode+'::'+setId;}
+  function testDraft(setId){
+    const draft=readAll(TEST_DRAFTS_KEY)[draftId(setId)];
+    if(draft)return draft;
+    const legacy=readAll(testMode==='example'?EXAMPLE_SESSION_KEY:SESSION_KEY);
+    return legacy.screen==='testQuiz'&&legacy.testSetId===setId&&(legacy.testMode||'definition')===testMode?legacy:null;
+  }
+  function removeTestDraft(setId){const drafts=readAll(TEST_DRAFTS_KEY);delete drafts[draftId(setId)];writeAll(TEST_DRAFTS_KEY,drafts);}
   const DARK_KEY = 'ella-voca-dark';
   const SESSION_KEY = 'ella-voca-session-v1';
   const POSITIONS_KEY = 'ella-voca-stage-positions-v1';
@@ -313,7 +322,7 @@
   function answerLabel(word){return testMode==='example'?word.exampleAnswer:word.word;}
   function renderTestMenu(){
     syncNavigation();
-    app.innerHTML=`<div class="app-shell">${topbar(testTitle())}<main class="content test-menu"><div class="test-intro"><h2>${testMode==='example'?'예문의 빈칸에 들어갈 단어 고르기':'영영정의를 보고 단어 맞히기'}</h2><p>각 Lesson 15문항 · 4지선다${testMode==='example'?' · 엑셀 예문':''}</p>${testMode==='example'&&readAll(EXAMPLE_SESSION_KEY).screen?'<button class="resume-btn" data-action="resume-example">▶ 중단한 예문시험 이어 풀기</button>':''}</div><div class="test-set-grid">${DATA.sets.map(set=>{const t=getTest(set.setId);return `<section class="test-set-card"><span class="badge">${escapeHtml(set.label)}</span><strong>${escapeHtml(set.title)}</strong><small>최고 정답 ${t.best}/${set.wordCount} · 오답 ${t.wrong.length}</small><div class="test-menu-actions"><button data-test-set="${set.setId}">시험 시작</button><button data-saved-wrong="${set.setId}" ${t.wrong.length?'':'disabled'}>오답 보기 (${t.wrong.length})</button></div></section>`}).join('')}</div></main></div>`;
+    app.innerHTML=`<div class="app-shell">${topbar(testTitle())}<main class="content test-menu"><div class="test-intro"><h2>${testMode==='example'?'예문의 빈칸에 들어갈 단어 고르기':'영영정의를 보고 단어 맞히기'}</h2><p>각 Lesson 15문항 · 4지선다 · 미응답은 오답 처리</p></div><div class="test-set-grid">${DATA.sets.map(set=>{const t=getTest(set.setId),draft=testDraft(set.setId);return `<section class="test-set-card"><span class="badge">${escapeHtml(set.label)}</span><strong>${escapeHtml(set.title)}</strong><small>최고 정답 ${t.best}/${set.wordCount} · 오답 ${t.wrong.length}</small><div class="test-menu-actions"><button data-test-set="${set.setId}">${draft?'▶ 이어 풀기 ('+(draft.testIndex+1)+'/'+draft.testQuestions.length+')':'시험 시작'}</button><button data-saved-wrong="${set.setId}" ${t.wrong.length?'':'disabled'}>오답 보기 (${t.wrong.length})</button><button class="reset-test-btn" data-reset-test="${set.setId}">이 Lesson 시험 초기화</button></div></section>`}).join('')}</div></main></div>`;
   }
   function buildTest(set, onlyWords=null){
     const src=onlyWords||set.words;
@@ -326,20 +335,25 @@
       choices.splice((i+offset)%4,0,word);return {word,choices};
     });
   }
-  function startTest(set,onlyWords=null){cancelStageTimer();if(onlyWords&&!onlyWords.length)return;testReview=!!onlyWords;testSet=set;testQuestions=buildTest(set,onlyWords);testIndex=0;testSelected=null;testHint=false;testAnswers=[];screen='testQuiz';render();}
+  function startTest(set,onlyWords=null,fresh=false){
+    cancelStageTimer();if(onlyWords&&!onlyWords.length)return;
+    if(!onlyWords&&!fresh){const draft=testDraft(set.setId);if(draft&&restoreSession(null,draft)){render();return;}}
+    testReview=!!onlyWords;testSet=set;testQuestions=buildTest(set,onlyWords);testIndex=0;testSelected=null;testHint=false;testAnswers=[];screen='testQuiz';render();saveSession();
+  }
 
   function renderTestQuiz(){
     syncNavigation();
     const q=testQuestions[testIndex], answered=testSelected!==null;
-    app.innerHTML=`<div class="app-shell test-theme">${topbar(testTitle(),'testMenu')}<main class="content test-quiz"><div class="quiz-topline"><span>${escapeHtml(testSet.label)}</span><b>${testIndex+1} / ${testQuestions.length}</b></div><div class="quiz-progress"><span style="width:${testAnswers.length/testQuestions.length*100}%"></span></div>
-    <section class="definition-question"><small>${testMode==='example'?'EXAMPLE · 예문':'DEFINITION'}</small><div>${testMode==='example'?escapeHtml(q.word.exampleBlank):definitionHtml(q.word.definitionEn)}</div></section>
-    <div class="test-choices">${q.choices.map((c,i)=>{const cor=answered&&c.word===q.word.word,wr=answered&&testSelected===c.word&&c.word!==q.word.word;return `<div class="test-choice-row ${cor?'correct':wr?'wrong':''}"><button class="test-choice" data-test-choice="${escapeHtml(c.word)}" ${answered?'disabled':''}><span class="choice-letter">${String.fromCharCode(65+i)}</span><span class="choice-main"><strong>${escapeHtml(testMode==='example'&&c.word===q.word.word?c.exampleAnswer:c.word)}</strong><small>${escapeHtml(c.partOfSpeechKo)}</small></span></button>${speaker(c,true)}</div>`}).join('')}</div>
-    ${!answered?`<button class="hint-btn" data-action="toggle-hint">💡 ${testHint?'힌트 닫기':'힌트 보기'}</button>${testHint?`<div class="hint-box">${testMode==='example'?`[예문 해석] ${escapeHtml(q.word.exampleKo)}`:`[힌트] 알파벳 ${normalizeAnswer(q.word.word).length}개 · ${escapeHtml(q.word.partOfSpeechKo)}`}</div>`:''}`:''}
-    ${answered?`<div class="test-feedback ${testSelected===q.word.word?'good':'bad'}"><b>${testSelected===q.word.word?'정답입니다!':`정답은 ${escapeHtml(answerLabel(q.word))}입니다.`}</b>${testMode==='example'?`<p class="example-complete">${escapeHtml(q.word.exampleEn)}</p><p class="example-translation">[해석] ${escapeHtml(q.word.exampleKo)}</p>`:''}</div><button class="next-test-btn" data-action="next-test">${testIndex===testQuestions.length-1?'결과 보기':'다음 문제'}</button>`:''}
-    </main></div>`;
+    app.innerHTML=`<div class="app-shell test-theme quiz-shell">${topbar(testTitle(),'testMenu')}<main class="content test-quiz"><div class="quiz-topline"><span>${escapeHtml(testSet.label)}</span><b>${testIndex+1} / ${testQuestions.length}</b></div><div class="quiz-progress"><span style="width:${testAnswers.length/testQuestions.length*100}%"></span></div><div class="quiz-body">
+    <section class="definition-question"><small>${testMode==='example'?'EXAMPLE · 예문':'DEFINITION'}</small><div>${testMode==='example'?escapeHtml(answered?q.word.exampleEn:q.word.exampleBlank):definitionHtml(q.word.definitionEn)}</div></section>
+    <div class="test-choices">${q.choices.map((c,i)=>{const cor=answered&&c.word===q.word.word,wr=answered&&testSelected===c.word&&c.word!==q.word.word;return `<div class="test-choice-row ${cor?'correct':wr?'wrong':''}"><button class="test-choice" data-test-choice="${escapeHtml(c.word)}" ${answered?'disabled':''}><span class="choice-letter">${String.fromCharCode(65+i)}</span><span class="choice-main"><strong>${escapeHtml(testMode==='example'&&c.word===q.word.word?c.exampleAnswer:c.word)}</strong><small>${escapeHtml(c.partOfSpeechKo)}${answered?' · '+escapeHtml(c.meaningKo):''}</small></span></button>${speaker(c,true)}</div>`}).join('')}</div>
+    ${!answered&&testHint?`<div class="hint-box">${testMode==='example'?'[예문 해석] '+escapeHtml(q.word.exampleKo):'[영영정의 해석] '+escapeHtml(q.word.definitionKo)}</div>`:''}
+    ${answered?`<div class="test-feedback ${testSelected===q.word.word?'good':'bad'}"><b>${testSelected===q.word.word?'정답입니다!':`정답은 ${escapeHtml(answerLabel(q.word))}입니다.`}</b><p class="example-translation">[해석] ${escapeHtml(testMode==='example'?q.word.exampleKo:q.word.definitionKo)}</p></div>`:''}
+    </div><div class="quiz-footer">${!answered?`<button class="hint-btn" data-action="toggle-hint">💡 ${testHint?'힌트 닫기':'힌트 보기'}</button>`:''}<button class="next-test-btn" data-action="next-test">${testIndex===testQuestions.length-1?'결과 보기':'다음 문제'}${!answered?' (미응답은 오답)':''}</button></div></main></div>`;
   }
 
   function finishTest(){
+    removeTestDraft(testSet.setId);
     writeAll(testMode==='example'?EXAMPLE_SESSION_KEY:SESSION_KEY,{});if(testMode!=='example')resumeAvailable=false;
     const score=testAnswers.filter(a=>a.correct).length, wrong=testAnswers.filter(a=>!a.correct).map(a=>a.word), old=getTest(testSet.setId);
     const attempted=new Set(testAnswers.map(a=>a.word)); saveTest(testSet.setId,{...old,best:testReview?old.best:Math.max(old.best,score),wrong:[...new Set([...(testReview?old.wrong.filter(w=>!attempted.has(w)):[]),...wrong])]}); screen='testResult';render();
@@ -405,10 +419,10 @@
       else notifyUser('주소를 길게 눌러 복사를 선택해 주세요.');
       return;
     }
-    if(action==='open-example'){cancelStageTimer();if(examplesReady){testMode='example';screen='testMenu';drawerOpen=false;render();}else openExamples();return;}
+    if(action==='open-example'){saveSession();cancelStageTimer();if(examplesReady){testMode='example';screen='testMenu';drawerOpen=false;render();}else openExamples();return;}
     if(action==='unlock-example'){unlockExamples();return;}
     if(action==='resume-example'){if(examplesReady&&restoreSession(EXAMPLE_SESSION_KEY))render();return;}
-    if(['go-home','open-test','open-example','go-testMenu'].includes(action)){cancelStageTimer();drawerOpen=false;if(action==='open-example')testMode='example';else if(action==='open-test')testMode='definition';screen=action==='go-home'?'home':'testMenu';render();return;}
+    if(['go-home','open-test','open-example','go-testMenu'].includes(action)){saveSession();cancelStageTimer();drawerOpen=false;if(action==='open-example')testMode='example';else if(action==='open-test')testMode='definition';screen=action==='go-home'?'home':'testMenu';render();return;}
     if(action==='open-study'){screen='study';currentSet=DATA.sets[0];stage=1;drawerOpen=false;resetStudyNav();render();return;}
     if(action==='open-drawer'){cancelStageTimer();drawerOpen=true;renderStudy();return;}
     if(action==='close-drawer'){drawerOpen=false;renderStudy();return;}
@@ -429,11 +443,11 @@
     if(action==='pause-example'){cancelStageTimer();notifyUser('자동 이동을 멈췄습니다. 다음 문제 버튼을 눌러 주세요.');return;}
     if(action==='next-test'){
       cancelStageTimer();
-      if(testSelected===null)return;
+      if(testSelected===null){const q=testQuestions[testIndex];testAnswers.push({word:q.word.word,selected:null,correct:false,skipped:true});const old=getTest(testSet.setId);saveTest(testSet.setId,{...old,wrong:[...new Set([...old.wrong,q.word.word])]});}
       if(testIndex===testQuestions.length-1)finishTest();else{testIndex++;testSelected=null;testHint=false;inputUntil=Date.now()+320;renderTestQuiz();}
       return;
     }
-    if(action==='retry-test'){startTest(testSet);return;}
+    if(action==='retry-test'){startTest(testSet,null,true);return;}
     if(action==='wrong-list'){screen='testWrong';render();return;}
     if(action==='retry-wrong'){startTest(testSet,testSet.words.filter(w=>getTest(testSet.setId).wrong.includes(w.word)));return;}
     if(el.dataset.set){stopMedia();currentSet=DATA.sets.find(s=>s.setId===el.dataset.set)||currentSet;drawerOpen=false;resetStudyNav();renderStudy();return;}
@@ -478,6 +492,14 @@
         },correct?750:350);
       }else{stage3Feedback='';renderStage();}
       return;
+    }
+    if(el.dataset.resetTest){
+      const id=el.dataset.resetTest,set=DATA.sets.find(s=>s.setId===id);if(!set)return;
+      if(confirm(set.label+'의 '+(testMode==='example'?'예문':'영영정의')+' 시험 위치·점수·오답을 초기화할까요? 다른 Lesson과 단어학습 기록은 유지됩니다.')){
+        removeTestDraft(id);const key=testMode==='example'?EXAMPLE_KEY:TEST_KEY,records=readAll(key);delete records[id];writeAll(key,records);
+        const skey=testMode==='example'?EXAMPLE_SESSION_KEY:SESSION_KEY;if(readAll(skey).testSetId===id){writeAll(skey,{});if(testMode==='definition')resumeAvailable=false;}
+        renderTestMenu();
+      }return;
     }
     if(el.dataset.testSet){const set=DATA.sets.find(s=>s.setId===el.dataset.testSet);if(set)startTest(set);return;}
     if(el.dataset.savedWrong){testSet=DATA.sets.find(s=>s.setId===el.dataset.savedWrong);if(testSet){screen='testWrong';render();}return;}
@@ -527,15 +549,17 @@
   function saveSession(){
     if(!DATA||!['study','testQuiz'].includes(screen))return;
     saveStagePosition();
-    writeAll(screen==='testQuiz'&&testMode==='example'?EXAMPLE_SESSION_KEY:SESSION_KEY,{version:1,testMode,screen,setId:currentSet?.setId,stage,index,flipped,
+    const snapshot={version:1,testMode,screen,setId:currentSet?.setId,stage,index,flipped,
       stage2Choices,stage3Banks,stage3Selected,stage3Feedback,
       reviewIds:reviewWords?.map(w=>w.word)||null,reviewResults,
       testSetId:testSet?.setId,testQuestions:testQuestions.map(q=>({word:q.word.word,choices:q.choices.map(w=>w.word)})),
-      testIndex,testSelected,testHint,testAnswers,testReview});
+      testIndex,testSelected,testHint,testAnswers,testReview};
+    writeAll(screen==='testQuiz'&&testMode==='example'?EXAMPLE_SESSION_KEY:SESSION_KEY,snapshot);
+    if(screen==='testQuiz'){const drafts=readAll(TEST_DRAFTS_KEY);drafts[draftId(testSet.setId)]=snapshot;writeAll(TEST_DRAFTS_KEY,drafts);}
     if(screen!=='testQuiz'||testMode!=='example')resumeAvailable=true;
   }
-  function restoreSession(key=SESSION_KEY){
-    const x=readAll(key);
+  function restoreSession(key=SESSION_KEY,snapshot=null){
+    const x=snapshot||readAll(key);
     try{
       if(x.version!==1||!['study','testQuiz'].includes(x.screen))return false;
       const set=DATA.sets.find(s=>s.setId===x.setId);
@@ -601,7 +625,7 @@
         const file=input.files[0];if(!file)return;if(file.size>2000000)throw Error();
         const b=JSON.parse(await file.text());if(!validBackup(b))throw Error();
         if(!confirm('현재 학습·시험 기록을 백업 파일의 기록으로 바꿀까요?'))return;
-        writeAll(STUDY_KEY,b.study);writeAll(TEST_KEY,b.test);writeAll(EXAMPLE_KEY,b.example||{});writeAll(EXAMPLE_SESSION_KEY,{});writeAll(SESSION_KEY,{});writeAll(POSITIONS_KEY,{});resumeAvailable=false;
+        writeAll(STUDY_KEY,b.study);writeAll(TEST_KEY,b.test);writeAll(EXAMPLE_KEY,b.example||{});writeAll(EXAMPLE_SESSION_KEY,{});writeAll(SESSION_KEY,{});writeAll(TEST_DRAFTS_KEY,{});writeAll(POSITIONS_KEY,{});resumeAvailable=false;
         render();notifyUser('학습 기록을 복원했습니다.');
       }catch{notifyUser('올바른 ELLA 기록 백업 파일을 선택해 주세요.');}
     };input.click();
