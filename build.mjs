@@ -10,6 +10,7 @@ for (const file of required) {
 const data = JSON.parse(fs.readFileSync(path.join(root, 'data/vocabulary.json'), 'utf8'));
 if (data.setCount !== 20 || data.totalWords !== 300) throw new Error(`Unexpected data count: sets=${data.setCount}, words=${data.totalWords}`);
 if (data.sets.some(s => s.wordCount !== 15)) throw new Error('Every lesson must contain 15 words.');
+if(JSON.stringify(data).includes('exampleEn'))throw new Error('Private examples must never be in public vocabulary data');
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(path.join(dist, 'data'), { recursive: true });
 for (const file of ['index.html','styles.css','app.js','sw.js','manifest.webmanifest']) fs.copyFileSync(path.join(root,file), path.join(dist,file));
@@ -18,3 +19,4 @@ console.log(`Build complete: ${data.setCount} lessons / ${data.totalWords} words
 
 
 fs.cpSync(path.join(root,'icons'),path.join(dist,'icons'),{recursive:true});
+
