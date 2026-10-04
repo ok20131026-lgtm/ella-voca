@@ -251,12 +251,13 @@ body.dark .home-option.example { background:linear-gradient(135deg,#183044,#203b
 .quiz-shell .choice-letter{width:22px;height:22px;font-size:13px}
 .quiz-shell .choice-main{min-width:0}.quiz-shell .choice-main strong{display:block;font-size:17px;line-height:1.2;white-space:nowrap;word-break:normal;overflow-wrap:normal}
 .quiz-shell .choice-main small{font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;margin-top:3px}
-.quiz-shell .test-choice:disabled .choice-main small{color:#76501f;font-weight:600}
-.quiz-shell .test-choice-row.correct .test-choice:disabled .choice-main small{color:#276140}
-.quiz-shell .test-choice-row.wrong .test-choice:disabled .choice-main small{color:#873138}
-body.dark .quiz-shell .test-choice:disabled .choice-main small{color:#f1d89e}
-body.dark .quiz-shell .test-choice-row.correct .test-choice:disabled .choice-main small{color:#b9e4c9}
-body.dark .quiz-shell .test-choice-row.wrong .test-choice:disabled .choice-main small{color:#ffd1d8}
+.quiz-shell .choice-main .choice-pos{color:var(--muted)}
+.quiz-shell .test-choice:disabled .choice-main .choice-meaning{color:#76501f;font-weight:600}
+.quiz-shell .test-choice-row.correct .test-choice:disabled .choice-main .choice-meaning{color:#276140}
+.quiz-shell .test-choice-row.wrong .test-choice:disabled .choice-main .choice-meaning{color:#873138}
+body.dark .quiz-shell .test-choice:disabled .choice-main .choice-meaning{color:#f1d89e}
+body.dark .quiz-shell .test-choice-row.correct .test-choice:disabled .choice-main .choice-meaning{color:#b9e4c9}
+body.dark .quiz-shell .test-choice-row.wrong .test-choice:disabled .choice-main .choice-meaning{color:#ffd1d8}
 .quiz-shell .example-answer{color:#98531c;background:#fff0cf;border-radius:4px;padding:0 3px;font-weight:800}
 body.dark .quiz-shell .example-answer{color:#ffd479;background:#44351d}
 .quiz-shell .test-choice-row .speak-btn.small{width:44px;height:100%;min-height:48px;border-radius:0 15px 15px 0;font-size:17px}
