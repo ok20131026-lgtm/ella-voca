@@ -341,11 +341,18 @@
     testReview=!!onlyWords;testSet=set;testQuestions=buildTest(set,onlyWords);testIndex=0;testSelected=null;testHint=false;testAnswers=[];screen='testQuiz';render();saveSession();
   }
 
+  function exampleAnsweredHtml(word){
+    const parts=word.exampleBlank.split('______');
+    const literal=text=>text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const match=word.exampleEn.match(new RegExp('^'+parts.map(literal).join('(.*?)')+'$'));
+    if(!match)return escapeHtml(word.exampleEn);
+    return parts.map((part,i)=>escapeHtml(part)+(i<parts.length-1?`<mark class="example-answer">${escapeHtml(match[i+1])}</mark>`:'')).join('');
+  }
   function renderTestQuiz(){
     syncNavigation();
     const q=testQuestions[testIndex], answered=testSelected!==null;
     app.innerHTML=`<div class="app-shell test-theme quiz-shell">${topbar(testTitle(),'testMenu')}<main class="content test-quiz"><div class="quiz-topline"><span>${escapeHtml(testSet.label)}</span><b>${testIndex+1} / ${testQuestions.length}</b></div><div class="quiz-progress"><span style="width:${testAnswers.length/testQuestions.length*100}%"></span></div><div class="quiz-body">
-    <section class="definition-question"><small>${testMode==='example'?'EXAMPLE · 예문':'DEFINITION'}</small><div>${testMode==='example'?escapeHtml(answered?q.word.exampleEn:q.word.exampleBlank):definitionHtml(q.word.definitionEn)}</div></section>
+    <section class="definition-question"><small>${testMode==='example'?'EXAMPLE · 예문':'DEFINITION'}</small><div>${testMode==='example'?(answered?exampleAnsweredHtml(q.word):escapeHtml(q.word.exampleBlank)):definitionHtml(q.word.definitionEn)}</div></section>
     <div class="test-choices">${q.choices.map((c,i)=>{const cor=answered&&c.word===q.word.word,wr=answered&&testSelected===c.word&&c.word!==q.word.word;return `<div class="test-choice-row ${cor?'correct':wr?'wrong':''}"><button class="test-choice" data-test-choice="${escapeHtml(c.word)}" ${answered?'disabled':''}><span class="choice-letter">${String.fromCharCode(65+i)}</span><span class="choice-main"><strong>${escapeHtml(testMode==='example'&&c.word===q.word.word?c.exampleAnswer:c.word)}</strong><small>${escapeHtml(c.partOfSpeechKo)}${answered?' · '+escapeHtml(c.meaningKo):''}</small></span></button>${speaker(c,true)}</div>`}).join('')}</div>
     ${!answered&&testHint?`<div class="hint-box">${testMode==='example'?'[예문 해석] '+escapeHtml(q.word.exampleKo):'[영영정의 해석] '+escapeHtml(q.word.definitionKo)}</div>`:''}
     ${answered?`<div class="test-feedback ${testSelected===q.word.word?'good':'bad'}"><b>${testSelected===q.word.word?'정답입니다!':`정답은 ${escapeHtml(answerLabel(q.word))}입니다.`}</b><p class="example-translation">[해석] ${escapeHtml(testMode==='example'?q.word.exampleKo:q.word.definitionKo)}</p></div>`:''}

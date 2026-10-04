@@ -37,6 +37,9 @@ for(let si=0;si<data.sets.length;si++){
   assert(b.nodes.app.innerHTML.includes(q.word.exampleKo.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))),'hint uses Excel translation');
   b.click({action:'toggle-hint'});assert(!b.nodes.app.innerHTML.includes('[예문 해석]'),'hint can be closed');
   b.click({testChoice:q.word.word});assert(b.nodes.app.innerHTML.includes(q.word.exampleKo.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))),q.word.word);
+  const sentence=b.nodes.app.innerHTML.match(/<section class="definition-question">.*?<div>(.*?)<\/div><\/section>/s)[1];
+  assert.equal((sentence.match(/class="example-answer"/g)||[]).length,q.word.exampleBlank.split('______').length-1,'highlight every answer segment');
+  assert.equal(sentence.replace(/<\/?mark[^>]*>/g,''),q.word.exampleEn.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),'highlight preserves source sentence');
   b.click({action:'next-test'});
  }
  assert.equal(b.api.state().screen,'testResult');assert.equal(b.api.getTest(set.setId).best,15);
